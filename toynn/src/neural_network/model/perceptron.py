@@ -12,7 +12,7 @@ def calculate_grads(parameters: tuple[np.ndarray], X: np.ndarray, Y: np.ndarray)
     db = np.zeros(b.shape)
 
     for i in range(len(X)):
-        y = softmax(np.dot(W, X[i]) + b)
+        y = softmax(W @ X[i] + b)
         dW += np.outer(y - Y[i], X[i])
         db += y - Y[i]
 
@@ -30,7 +30,7 @@ class Perceptron(NNModel):
         return (self.W, self.b)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        return softmax(np.dot(self.W, x)+self.b)
+        return softmax(self.W @ x + self.b)
     
     def save(self, fp: Path) -> None:
         np.savez(fp, w=self.W, b=self.b)

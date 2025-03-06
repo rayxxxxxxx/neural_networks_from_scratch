@@ -1,7 +1,8 @@
 from pathlib import Path
 import numpy as np
 
-from src.neural_network.util.loss_functions import corss_entropy
+from src.neural_network.util.loss_functions import loss, corss_entropy
+from src.neural_network.util.metrics import accuracy
 from src.neural_network.model.multi_layer_perceptron import MLP, MLPOptimizer
 
 
@@ -20,21 +21,11 @@ def main():
     model = MLP(n_in, n_h, n_out)
     optimizer = MLPOptimizer(model)
 
-    y_pred = np.array([model.forward(x) for x in x_test])
-    print(f"untrained loss: {round(corss_entropy(y_test, y_pred), 3)}")
-
+    print(f"untrained loss: {round(loss(model, x_test, y_test, corss_entropy), 3)}")
     optimizer.optimize(x_train, y_train, learning_rate, batch_size, max_epoch)
+    print(f"untrained loss: {round(loss(model, x_test, y_test, corss_entropy), 3)}")
 
-    y_pred = np.array([model.forward(x) for x in x_test])
-    print(f"trained loss: {round(corss_entropy(y_test, y_pred), 3)}")
-
-    true_positive_count = 0
-    for x, y in zip(x_test, y_test):
-        ypred = model.forward(x)
-        true_positive_count += 1 if np.argmax(y) == np.argmax(ypred) else 0
-
-    accuracy = true_positive_count / x_test.shape[0]
-    print(f"test set accuracy: {round(accuracy*100, 2)}%")
+    print(f"test set accuracy: {accuracy(model, x_test, y_test)}%")
 
 
 def load_mnist_dataset():
