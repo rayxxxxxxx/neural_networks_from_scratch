@@ -1,69 +1,54 @@
 from pathlib import Path
 import numpy as np
-from numba import njit, prange
 
 from src.neural_network.util.activation_functions import softmax
-from src.neural_network.model.modelbase import NNModel, NNOptimizer, NNLoader
+from src.neural_network.model.modelbase import NNModel, NNOptimizer
 
 
-@njit(fastmath=True)
-def calc_grads(xbatch: np.ndarray, ybatch: np.ndarray, w: np.ndarray, b: np.ndarray) -> tuple[np.ndarray]:
-    dw = np.zeros(w.shape)
+def calculate_grads(parameters: tuple[np.ndarray], X: np.ndarray, Y: np.ndarray) -> tuple[np.ndarray]:
+    n = len(X)
+    W, b = parameters
+    dW = np.zeros(W.shape)
     db = np.zeros(b.shape)
 
-    for i in prange(xbatch.shape[0]):
-        y = softmax(w @ xbatch[i] + b)
-        dw += np.outer(y - ybatch[i], xbatch[i])
-        db += y - ybatch[i]
+    for i in range(len(X)):
+        y = softmax(np.dot(W, X[i]) + b)
+        dW += np.outer(y - Y[i], X[i])
+        db += y - Y[i]
 
-    return dw, db
+    return (dW/n, db/n)
 
 
 class Perceptron(NNModel):
-    def __init__(self, nin: int, nout: int) -> None:
+    def __init__(self, n_in: int, n_out: int) -> None:
         super().__init__()
-        self.nin: int = nin
-        self.nout: int = nout
-        self.w: np.ndarray = np.random.uniform(-1, 1, (nout, nin))
-        self.b: np.ndarray = np.zeros(nout)
+        self.W: np.ndarray = np.random.uniform(-1, 1, (n_out, n_in))
+        self.b: np.ndarray = np.zeros(n_out)
 
-    def predict(self, x: np.ndarray):
-        return softmax(self.w @ x + self.b)
+    @property
+    def parameters(self) -> tuple[np.ndarray]:
+        return (self.W, self.b)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        return softmax(np.dot(self.W, x)+self.b)
+    
+    def save(self, fp: Path) -> None:
+        np.savez(fp, w=self.W, b=self.b)
+
+    def load(self, fp: Path) -> None:
+        parameters = np.load(fp)
+        self.W = parameters['w']
+        self.b = parameters['b']
 
 
 class PerceptronOptimizer(NNOptimizer):
-    def __init__(self, model: NNModel) -> None:
+    def __init__(self, model: Perceptron) -> None:
         super().__init__(model)
 
-    def calc_grads(self, xbatch: np.ndarray, ybatch: np.ndarray) -> tuple[np.ndarray]:
-        dw, db = calc_grads(
-            xbatch,
-            ybatch,
-            self.model.w,
-            self.model.b
-        )
+    def calculate_grads(self, X: np.ndarray, Y: np.ndarray) -> tuple[np.ndarray]:
+        return calculate_grads(self.model.parameters, X, Y)
 
-        return (dw, db)
-
-    def apply_grads(self, grads: tuple[np.ndarray], lr: float):
-        self.model.w -= lr*grads[0]
-        self.model.b -= lr*grads[1]
-
-
-class PerceptronLoader(NNLoader):
-    def __init__(self) -> None:
-        super().__init__()
-
-    def save(self, model: NNModel, dirpath: Path):
-        w_fp = Path(dirpath, 'weight.npy')
-        b_fp = Path(dirpath, 'bias.npy')
-
-        np.save(w_fp, model.w)
-        np.save(b_fp, model.b)
-
-    def load(self, model: NNModel, dirpath: Path):
-        w_fp = Path(dirpath, 'weight.npy')
-        b_fp = Path(dirpath, 'bias.npy')
-
-        model.w = np.load(w_fp)
-        model.b = np.load(b_fp)
+    def update_parameters(self, grads: tuple[np.ndarray], lr: float):
+        dW, db = grads
+        self.model.W -= lr * dW
+        self.model.b -= lr * db

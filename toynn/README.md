@@ -1,4 +1,4 @@
-# toynn is a simple neural network module written with numpy and numba (also requires SciPy)
+# toynn is a simple neural network module written with numpy
 
 ## How to run
 

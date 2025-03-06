@@ -1,111 +1,58 @@
 from pathlib import Path
-
 import numpy as np
-import pandas as pd
 
-from src.neural_network.util.loss_functions import logloss
-from src.neural_network.model.perceptron import Perceptron, PerceptronOptimizer
+from src.neural_network.util.loss_functions import corss_entropy
+from src.neural_network.model.multi_layer_perceptron import MLP, MLPOptimizer
 
 
 def main():
 
-    xtrain, ytrain, xtest, ytest = load_iris_dataset()
+    x_train, y_train, x_test, y_test = load_mnist_dataset()
 
-    nin = 4
-    nout = 3
+    n_in = 784
+    n_h = 32
+    n_out = 10
 
-    learning_rate = 1e-2
-    batch_size = 8
-    max_epoch = 2000
+    learning_rate = 1e-1
+    batch_size = 32
+    max_epoch = 4
 
-    model = Perceptron(nin, nout)
-    optimizer = PerceptronOptimizer(model)
+    model = MLP(n_in, n_h, n_out)
+    optimizer = MLPOptimizer(model)
 
-    ypred = np.array([model.predict(x) for x in xtest])
-    print('untrained loss: ', logloss(ypred, ytest))
+    y_pred = np.array([model.forward(x) for x in x_test])
+    print(f"untrained loss: {round(corss_entropy(y_test, y_pred), 3)}")
 
-    optimizer.optimize(
-        xtrain,
-        ytrain,
-        learning_rate,
-        batch_size,
-        max_epoch
-    )
+    optimizer.optimize(x_train, y_train, learning_rate, batch_size, max_epoch)
 
-    ypred = np.array([model.predict(x) for x in xtest])
-    print('trained loss: ', logloss(ypred, ytest))
+    y_pred = np.array([model.forward(x) for x in x_test])
+    print(f"trained loss: {round(corss_entropy(y_test, y_pred), 3)}")
 
     true_positive_count = 0
-    for x, y in zip(xtest, ytest):
-        ypred = model.predict(x)
+    for x, y in zip(x_test, y_test):
+        ypred = model.forward(x)
         true_positive_count += 1 if np.argmax(y) == np.argmax(ypred) else 0
 
-    accuracy = true_positive_count / xtest.shape[0]
+    accuracy = true_positive_count / x_test.shape[0]
     print(f"test set accuracy: {round(accuracy*100, 2)}%")
 
 
-def load_iris_dataset():
-    df = pd.read_csv(Path('data', 'iris_csv.csv'))
+def load_mnist_dataset():
+    train_data = np.loadtxt(Path('D:/Development/Data/datasets/csv/mnist_train_small.csv'), delimiter=',')
+    test_data = np.loadtxt(Path('D:/Development/Data/datasets/csv/mnist_test.csv'), delimiter=',')
 
-    for c in df.columns[0:4]:
-        df[c] = (df[c]-df[c].mean())/df[c].std()
+    def one_hot(n_classes: int, idx: int) -> np.ndarray:
+        encoding = np.zeros(n_classes)
+        encoding[idx] = 1.0
+        return encoding
+    
+    x_train = train_data[:,1:] / 255.0
+    y_train = np.array([one_hot(10, int(i)) for i in train_data[:,0]])
 
-    for name in df['class'].unique():
-        df[f'label-{name}'] = df['class'].map(lambda x: 1 if x == name else 0)
+    x_test = test_data[:,1:] / 255.0
+    y_test = np.array([one_hot(10, int(i)) for i in test_data[:,0]])
 
-    setosa_idxs = np.arange(0, 50)
-    versicolor_idxs = np.arange(50, 100)
-    virginica_idxs = np.arange(100, 150)
-
-    p = np.random.permutation(np.arange(50))
-
-    setosa_train_idxs = setosa_idxs[p[0:10]]
-    setosa_test_idxs = setosa_idxs[p[10:]]
-
-    versicolor_train_idxs = versicolor_idxs[p[0:10]]
-    versicolor_test_idxs = versicolor_idxs[p[10:]]
-
-    virginica_train_idxs = virginica_idxs[p[0:10]]
-    virginica_test_idxs = virginica_idxs[p[10:]]
-
-    feature_columns = [
-        'sepallength',
-        'sepalwidth',
-        'petallength',
-        'petalwidth'
-    ]
-
-    label_columns = [
-        'label-Iris-setosa',
-        'label-Iris-versicolor',
-        'label-Iris-virginica'
-    ]
-
-    xtrain = np.vstack([
-        df.iloc[setosa_train_idxs][feature_columns],
-        df.iloc[versicolor_train_idxs][feature_columns],
-        df.iloc[virginica_train_idxs][feature_columns]
-    ])
-
-    ytrain = np.vstack([
-        df.iloc[setosa_train_idxs][label_columns],
-        df.iloc[versicolor_train_idxs][label_columns],
-        df.iloc[virginica_train_idxs][label_columns]
-    ])
-
-    xtest = np.vstack([
-        df.iloc[setosa_test_idxs][feature_columns],
-        df.iloc[versicolor_test_idxs][feature_columns],
-        df.iloc[virginica_test_idxs][feature_columns]
-    ])
-
-    ytest = np.vstack([
-        df.iloc[setosa_test_idxs][label_columns],
-        df.iloc[versicolor_test_idxs][label_columns],
-        df.iloc[virginica_test_idxs][label_columns]
-    ])
-
-    return (xtrain, ytrain, xtest, ytest)
+    return (x_train, y_train, x_test, y_test)
 
 
 if __name__ == '__main__':
