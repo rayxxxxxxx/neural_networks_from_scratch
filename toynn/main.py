@@ -1,13 +1,12 @@
 from pathlib import Path
 import numpy as np
 
-from src.neural_network.util.loss_functions import loss, corss_entropy
+from src.neural_network.util.loss_functions import loss, cross_entropy
 from src.neural_network.util.metrics import accuracy
 from src.neural_network.model.multi_layer_perceptron import MLP, MLPOptimizer
 
 
 def main():
-
     x_train, y_train, x_test, y_test = load_mnist_dataset()
 
     n_in = 784
@@ -21,9 +20,9 @@ def main():
     model = MLP(n_in, n_h, n_out)
     optimizer = MLPOptimizer(model)
 
-    print(f"untrained loss: {round(loss(model, x_test, y_test, corss_entropy), 3)}")
+    print(f"untrained loss: {round(loss(model, x_test, y_test, cross_entropy), 3)}")
     optimizer.optimize(x_train, y_train, learning_rate, batch_size, max_epoch)
-    print(f"untrained loss: {round(loss(model, x_test, y_test, corss_entropy), 3)}")
+    print(f"untrained loss: {round(loss(model, x_test, y_test, cross_entropy), 3)}")
 
     print(f"test set accuracy: {accuracy(model, x_test, y_test)}%")
 
